@@ -11,8 +11,8 @@ from keras.layers import Input, Dense, Dropout, GRU, GlobalMaxPool1D, GlobalMaxP
 
 def main():
     # load data
-    h5f = h5py.File('data/processed.h5', 'r')
-    max_ind = int(len(h5f['input'])*0.8)
+    h5f = h5py.File('data/processed_bpe.h5', 'r')
+    max_ind = int(len(h5f['input'])*0.5)
     print('-> max index:', max_ind)
     oba_inputs = h5f['input'][:max_ind]
     oba_outputs = np.squeeze(h5f['output'][:max_ind])
@@ -29,15 +29,15 @@ def main():
                                                         random_state=42)
 
 
-    hidden_size = 200
+    hidden_size = 150
     rnn_size = 100
-    batch_size = 128
-    n_epochs = 100
+    batch_size = 64
+    n_epochs = 3
     sen_len = oba_inputs.shape[1]
     emb_len = oba_inputs.shape[2]
     # which iteration of models to load
-    current_it = 7
-    next_it = 8
+    current_it = 11
+    next_it = 11
     full_path = 'models/att{}_full.h5'.format(current_it)
     full_new_path = 'models/att{}_full.h5'.format(next_it)
 
@@ -59,10 +59,10 @@ def main():
                           recurrent_dropout=0.1,
                           return_sequences=True)))
         # model.add(SeqSelfAttention(attention_activation='sigmoid'))
-        # model.add(keras.layers.Bidirectional(keras.layers.GRU(units=rnn_size,
-        #                   dropout=0.25,
-        #                   recurrent_dropout=0.1,
-        #                   return_sequences=True)))
+        model.add(keras.layers.Bidirectional(keras.layers.GRU(units=rnn_size,
+                          dropout=0.25,
+                          recurrent_dropout=0.1,
+                          return_sequences=True)))
         # model.add(SeqSelfAttention(attention_activation='sigmoid'))
         # model.add(keras.layers.Bidirectional(keras.layers.GRU(units=rnn_size,
         #                   dropout=0.25,

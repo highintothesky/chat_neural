@@ -1,5 +1,6 @@
 # process movie dialog for training the chatbot
-# now made for producing the next word
+# started using:
+from bpemb import BPEmb
 import numpy as np
 import csv
 
@@ -14,9 +15,7 @@ def sentence_to_matrix(sentence, ft_model, seq_length):
     # for a single string
     sentence_list = sentence.split()
     emb_len = len(ft_model.wv['wtf'])
-    # seq_length = len(sentence_list)
-    # no_sentences = len(sentence_list)
-    # sent_idx = 0
+
     total_mat = np.zeros((1, seq_length, emb_len))
     for i in range(len(sentence_list)):
         # we want to stick these words at the end of the vector
@@ -36,6 +35,40 @@ def sentences_to_matrix(sentence_list, ft_model):
         res_arr[idx,:,:] = sentence_to_matrix(sent, ft_model, seq_length)
     return res_arr
 
+def encode_sentence_list(sentence_list, bpemb_en, seq_length):
+    # process using BPE
+    input_list = []
+    output_list = []
+    long_sentence = ''
+    emb_len = bpemb_en.embed('test sentence').shape[1]
+
+    for sentence in sentence_list:
+        # print(sentence)
+        long_sentence += sentence + ' '
+        enc_mat = bpemb_en.embed(long_sentence)
+        this_seq_length = enc_mat.shape[0]
+        if this_seq_length > seq_length:
+            long_sentence = ''
+            # now loop over the dims of enc_mat
+            for i in range(this_seq_length-seq_length):
+                this_in_mat = enc_mat[i:i+seq_length,:]
+                this_out_mat = enc_mat[i+seq_length,:]
+                input_list.append(this_in_mat)
+                output_list.append(this_out_mat)
+
+    return np.array(input_list), np.array(output_list)
+
+def embed_single(sentence, bpemb_en, seq_length):
+    # embed single sentence (last has preference)
+    enc_mat = bpemb_en.embed(sentence)
+    this_seq_length = enc_mat.shape[0]
+    emb_len = enc_mat.shape[1]
+    if this_seq_length <= seq_length:
+        arr = np.zeros((seq_length, emb_len))
+        arr[-this_seq_length:,:] = enc_mat
+    else:
+        arr = enc_mat[-seq_length:,:]
+    return arr
 
 if __name__ == '__main__':
     # dict for storing all conversations
@@ -80,16 +113,8 @@ if __name__ == '__main__':
             line = re.sub('</U>', '', line)
             line = re.sub('\`', " ", line)
             line = re.sub('\-\-', ' ', line)
-            line = re.sub('\.', ' . ', line)
-            line = re.sub('\,', ' , ', line)
-            # line = re.sub('\.\.\.', ' ', line)
             line = re.sub('\. \. \.', ' . ', line)
             line = re.sub('\.  \.  \.', ' . ', line)
-            # line = re.sub('\?\.', '?', line)
-            line = re.sub('\?', ' ? ', line)
-            line = re.sub('\!', ' ! ', line)
-            line = re.sub('\;', ' , ', line)
-            line = re.sub('\:', ' . ', line)
             line = re.sub(' +', ' ', line)
             line = line.lower()
 
@@ -97,7 +122,7 @@ if __name__ == '__main__':
 
     # overwrite because why not
     write_txt = False
-    ft = True
+    encode = True
     if write_txt:
         with open('data/lines_raw.txt', 'w') as f:
             for line_list in conv_list:
@@ -106,69 +131,35 @@ if __name__ == '__main__':
 
     # store the accepted convos
     # at least x percent of the lines must have this length
-    min_sent_len = 40
-    len_perc_max = 0.5
+    # min_sent_len = 40
+    # len_perc_max = 0.5
     in_sentences = []
-    out_words = []
-    if write_txt:
-        f_in = open('data/input_sentences.txt', 'w')
-        f_out = open('data/output_words.txt', 'w')
+    # if write_txt:
+    #     f_in = open('data/input_sentences.txt', 'w')
+    #     f_out = open('data/output_words.txt', 'w')
 
     for line_list in conv_list:
         # 1 because we're going to add a stop sign later
         total_len = 1
         sentences = []
         for line_id in line_list:
-            this_line = line_dict[line_id].split()
-            total_len += len(this_line)
-            sentences += this_line
-        sentences.append('<eos>')
-
-        if total_len > min_sent_len:
-            for i in range(0, total_len - min_sent_len - 1):
-                input_list = sentences[i:i+min_sent_len]
-                input_str = ' '.join([word for word in input_list])
-                output_str = sentences[i+min_sent_len+1]
-                in_sentences.append(input_str)
-                out_words.append(output_str)
-                if write_txt:
-                    f_in.write(input_str + '\n')
-                    f_out.write(output_str + '\n')
+            in_sentences.append(line_dict[line_id])
 
 
     print('-> Sentences accepted:')
     print(len(in_sentences))
 
 
-    if ft:
-        print('-> loading fasttext wordembed model')
-        ft_model = FastText.load('models/fasttext2')
+    if encode:
+        print('-> loading BPE wordembed model')
+        bpemb_en = BPEmb(lang="en", dim=50)
+        seq_length = 30
         # max_sen_len = 20
-        print('-> Processing inputs')
-        oba_inputs = sentences_to_matrix(in_sentences[:200000], ft_model)
-        print('-> Processing outputs')
-        oba_outputs = sentences_to_matrix(out_words[:200000], ft_model)[:,-1,:]
+        oba_inputs, oba_outputs = encode_sentence_list(in_sentences, bpemb_en, seq_length)
         print('-> Writing to file')
-        # normalize, print max, min
-        # first add abs(min)
-        # then decide max
-        # then divide by max
-        # dat_min = np.min(oba_utt)
-        # print('-> Lowest value in data:')
-        # print(dat_min)
-        # oba_utt += np.abs(dat_min)
-        # oba_resp += np.abs(dat_min)
-        # dat_max = np.max(oba_utt)
-        # print('-> highest value in data:')
-        # print(dat_max)
-        # oba_utt = np.divide(oba_utt, dat_max)
-        # oba_resp = np.divide(oba_resp, dat_max)
-        # print('-> max:')
-        # print(np.max(oba_inputs))
-        # print('-> min:')
-        # print(np.min(oba_inputs))
 
-        h5f = h5py.File('data/processed.h5', 'w')
+
+        h5f = h5py.File('data/processed_bpe.h5', 'w')
         h5f.create_dataset('input', data=oba_inputs)
         h5f.create_dataset('output', data=oba_outputs)
         print('-> wrote arrays to hdf5')

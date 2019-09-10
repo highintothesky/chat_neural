@@ -2,6 +2,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from bot import NeuralBot
 import keras
 from keras_self_attention import SeqSelfAttention
+from keras_multi_head import MultiHead
+from keras.utils import CustomObjectScope
 import tensorflow as tf
 
 if __name__ == '__main__':
@@ -9,8 +11,9 @@ if __name__ == '__main__':
     f = open("token.txt", "r")
     token = f.read().strip()
 
-    model = keras.models.load_model('models/att5_full.h5',
-                                    custom_objects=SeqSelfAttention.get_custom_objects())
+    with CustomObjectScope({'SeqSelfAttention': SeqSelfAttention,
+                            'MultiHead': MultiHead}):
+        model = keras.models.load_model('models/att11_full.h5')
     global graph
     graph = tf.get_default_graph()
 
