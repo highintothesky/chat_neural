@@ -1,7 +1,7 @@
-from process_movie_lines import sentences_to_matrix
-from train_attention import infer_nmt
-from tensorflow.python.keras.models import load_model
-from tensorflow.python.keras.backend import set_session
+from process_movie_lines2 import sentences_to_matrix
+# from train_attention3 import infer_nmt
+# from tensorflow.python.keras.models import load_model
+# from tensorflow.python.keras.backend import set_session
 from layers.attention import AttentionLayer
 from gensim.models import FastText
 import numpy as np
@@ -12,32 +12,25 @@ class NeuralBot():
     """
     for handling messages
     """
-    def __init__(self, updater):
+    def __init__(self, updater, model, graph):
         self.updater = updater
+        self.graph = graph
         self.huub_seen = False
         self.niels_seen = False
         self.huub_list = ['huub', 'hubert']
         self.niels_list = ['niels']
-        self.max_sen_len = 30
-        global sess
-        sess = tf.Session()
-        set_session(sess)
-        global graph
-        graph = tf.get_default_graph()
-        with graph.as_default():
-            self.att_model = load_model('models/att1_full.h5',
-                                   custom_objects={"GlorotUniform": tf.keras.initializers.glorot_uniform,
-                                                   "AttentionLayer": k_att.AttentionLayer})
-            # self.infer_enc_model = load_model('models/att1_enc.h5',
-            #                        custom_objects={"GlorotUniform": tf.keras.initializers.glorot_uniform,
-            #                                        "AttentionLayer": k_att.AttentionLayer})
-            # self.infer_dec_model = load_model('models/att1_dec.h5',
-            #                        custom_objects={"GlorotUniform": tf.keras.initializers.glorot_uniform,
-            #                                        "AttentionLayer": k_att.AttentionLayer})
-            # self.infer_enc_model.compile(optimizer='adam', loss='mse')
-            # self.infer_dec_model.compile(optimizer='adam', loss='mse')
-        # print(self.infer_enc_model.summary())
+        self.max_sen_len = 20
+        self.model = model
+        # global sess
+        # sess = tf.Session()
+        # set_session(sess)
+        # global graph
+        # graph = tf.get_default_graph()
+        # with graph.as_default():
+        #     self.att_model = keras.models.load_model('models/att1_full.h5',
+        #                                             custom_objects=SeqSelfAttention.get_custom_objects())
         self.ft_model = FastText.load('models/fasttext2')
+        self.session = tf.Session()
 
     def start(self):
         self.updater.start_polling()
@@ -63,41 +56,43 @@ class NeuralBot():
                 update.message.reply_text("WELKOM MEESTER \n ┗(｀Дﾟ┗(｀ﾟДﾟ´)┛ﾟД´)┛")
                 self.niels_seen = True
         # else:
-        sentences = [update.message.text]
-        mat = sentences_to_matrix(sentences, self.ft_model, 30)
-        print('-> mat shape:')
-        print(mat.shape)
-        test_en_seq = np.expand_dims(mat[0,:,:], 0)
-        print('-> Test sentence:')
-        print(sentences[0])
-        print(test_en_seq.shape)
-        # global sess
-        # global graph
-        # graph = tf.get_default_graph()
-        with graph.as_default():
-            try:
-                in_arr = np.zeros((512,30,100))
-                out_arr = np.zeros((512,29,100))
-                print('-> made out arr')
-                sent_mat = sentences_to_matrix(sentences, self.ft_model, self.max_sen_len)
-                start_mat = sentences_to_matrix(['sos'], self.ft_model, self.max_sen_len-1)
-                in_arr[0,:,:] = sent_mat
-                out_arr[0,:,:] = start_mat
-                print('-> got word embeddings...')
-                pred_arr = self.att_model.predict([in_arr, out_arr])
-                out_str = ''
-                for i in range(29):
-                    this_word = ft_model.most_similar(positive=[a_batch[0,i,:]])[0][0]
-                    print(this_word)
-                    out_str += this_word + ' '
-                # test_fr, attn_weights = infer_nmt(
-                #     encoder_model=self.infer_enc_model, decoder_model=self.infer_dec_model,
-                #     test_en_seq=test_en_seq, emb_len = 100, ft_model = self.ft_model)
-                print('-> Done. output text:')
-                print(out_str)
-                update.message.reply_text(out_str)
-            except Exception as ex:
-                print(ex)
-                update.message.reply_text(update.message.text)
+
+
+        output_sentence = self.get_neural_response(update.message.text)
+        update.message.reply_text(output_sentence)
         # print('-> Replying...')
         # update.message.reply_text(update.message.text)
+
+    def get_neural_response(self, input_string):
+        sentences = [input_string]
+        print('-> getting neural response')
+        try:
+            # global graph
+            # graph = tf.get_default_graph()
+            mat = sentences_to_matrix(sentences, self.ft_model)
+            print('-> mat shape:')
+            print(mat.shape)
+            test_in_seq = np.expand_dims(mat[0,:,:], 0)
+            print('-> Test sentence:')
+            print(sentences[0])
+            out_sentence = ''
+            print(test_in_seq.shape)
+        except Exception as ex:
+            print(ex)
+        try:
+            for j in range(15):
+                with self.graph.as_default():
+                    # with self.session.as_default():
+                    arr = self.model.predict(test_in_seq)
+
+                arr = np.expand_dims(arr, 0)
+                # print(arr.shape)
+                word = self.ft_model.most_similar(positive=[arr[0,0,:]])[0][0]
+                # print(word)
+                out_sentence += word + ' '
+
+                test_in_seq = test_in_seq[:,1:,:]
+                test_in_seq = np.concatenate((test_in_seq, arr), axis=1)
+        except Exception as ex:
+            print(ex)
+        return out_sentence

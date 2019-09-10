@@ -1,4 +1,5 @@
 # process movie dialog for training the chatbot
+# now made for producing the next word
 import numpy as np
 import csv
 
@@ -7,27 +8,31 @@ import h5py
 from gensim.models import FastText
 import re
 
-def sentences_to_matrix(sentence_list, ft_model, max_sen_len):
+
+
+def sentence_to_matrix(sentence, ft_model, seq_length):
+    # for a single string
+    sentence_list = sentence.split()
     emb_len = len(ft_model.wv['wtf'])
-    no_sentences = len(sentence_list)
-    sent_idx = 0
-    total_mat = np.zeros((no_sentences, max_sen_len, emb_len))
-    for sent in sentence_list:
-        this_list = sent.split()
-        # vec_list = []
-        word_idx = 0
-        sent_mat = np.zeros((max_sen_len, emb_len))
-
-        for word in this_list:
-            sent_mat[word_idx, :] = ft_model.wv[word]
-            word_idx += 1
-            if word_idx == max_sen_len:
-                break
-
-        total_mat[sent_idx, :, :] = sent_mat
-        sent_idx += 1
+    # seq_length = len(sentence_list)
+    # no_sentences = len(sentence_list)
+    # sent_idx = 0
+    total_mat = np.zeros((1, seq_length, emb_len))
+    for i in range(len(sentence_list)):
+        word = sentence_list[i]
+        total_mat[0,i,:] = ft_model.wv[word]
 
     return total_mat
+
+def sentences_to_matrix(sentence_list, ft_model):
+    no_sentences = len(sentence_list)
+    # seq_length = len(sentence_list[0].split())
+    seq_length = 20
+    emb_len = len(ft_model.wv['wtf'])
+    res_arr = np.zeros((no_sentences, seq_length, emb_len))
+    for idx, sent in enumerate(sentence_list):
+        res_arr[idx,:,:] = sentence_to_matrix(sent, ft_model, seq_length)
+    return res_arr
 
 
 if __name__ == '__main__':
@@ -80,7 +85,7 @@ if __name__ == '__main__':
             line_dict[line_name] = line
 
     # overwrite because why not
-    write_raw = True
+    write_raw = False
     if write_raw:
         with open('data/lines_raw.txt', 'w') as f:
             for line_list in conv_list:
@@ -89,54 +94,44 @@ if __name__ == '__main__':
 
     # store the accepted convos
     # at least x percent of the lines must have this length
-    min_sent_len = 5
+    min_sent_len = 20
     len_perc_max = 0.5
-    conv_accepted = []
-    sent_accepted = []
-    utterances = []
-    responses = []
-    f_utt = open('data/utterances.txt', 'w')
-    f_resp = open('data/responses.txt', 'w')
+    in_sentences = []
+    out_words = []
+    f_in = open('data/input_sentences.txt', 'w')
+    f_out = open('data/output_words.txt', 'w')
 
     for line_list in conv_list:
-        too_short = 0.
+        # 1 because we're going to add a stop sign later
+        total_len = 1
+        sentences = []
         for line_id in line_list:
-            if len(line_dict[line_id].split()) < min_sent_len:
-                too_short += 1
-        if too_short/len(line_list) < len_perc_max:
-            conv_accepted.append(line_list)
-            for idx, line_id in enumerate(line_list):
-                sent_accepted.append('sos ' + line_dict[line_id] + ' eos')
-                if idx < len(line_list) - 1:
-                    utt = 'sos ' + line_dict[line_id] + ' eos'
-                    utterances.append(utt)
-                    f_utt.write(utt + '\n')
-                    next_id = line_list[idx+1]
-                    resp = 'sos ' + line_dict[next_id] + ' eos'
-                    responses.append(resp)
-                    f_resp.write(resp + '\n')
+            this_line = line_dict[line_id].split()
+            total_len += len(this_line)
+            sentences += this_line
+        sentences.append('<eos>')
+
+        if total_len > min_sent_len:
+            for i in range(0, total_len - min_sent_len - 1):
+                input_list = sentences[i:i+min_sent_len]
+                input_str = ' '.join([word for word in input_list])
+                output_str = sentences[i+min_sent_len+1]
+                in_sentences.append(input_str)
+                out_words.append(output_str)
+                f_in.write(input_str + '\n')
+                f_out.write(output_str + '\n')
 
 
-    print('-> convo length before cull:')
-    print(len(conv_list))
-    print('-> convo length after cull:')
-    print(len(conv_accepted))
-
-    print('-> utterances:')
-    print(len(utterances))
-    print('-> responses:')
-    print(len(utterances))
+    print('-> Sentences accepted:')
+    print(len(in_sentences))
 
     ft = True
     if ft:
         print('-> loading fasttext wordembed model')
         ft_model = FastText.load('models/fasttext2')
-        max_sen_len = 20
-        # sent_mat = sentences_to_matrix(sent_accepted)
-        oba_utt = sentences_to_matrix(utterances, ft_model, max_sen_len)
-        oba_resp = sentences_to_matrix(responses, ft_model, max_sen_len)
-        print(utterances[0:3])
-        print(oba_utt[0:3,:,:])
+        # max_sen_len = 20
+        oba_inputs = sentences_to_matrix(in_sentences[:500000], ft_model)
+        oba_outputs = sentences_to_matrix(out_words[:500000], ft_model)
         # normalize, print max, min
         # first add abs(min)
         # then decide max
@@ -151,12 +146,12 @@ if __name__ == '__main__':
         # print(dat_max)
         # oba_utt = np.divide(oba_utt, dat_max)
         # oba_resp = np.divide(oba_resp, dat_max)
-        print('-> after normalization max:')
-        print(np.max(oba_utt))
-        print('-> after normalization min:')
-        print(np.min(oba_utt))
+        # print('-> max:')
+        # print(np.max(oba_inputs))
+        # print('-> min:')
+        # print(np.min(oba_inputs))
 
-        h5f = h5py.File('data/processed1.h5', 'w')
-        h5f.create_dataset('utterances', data=oba_utt)
-        h5f.create_dataset('responses', data=oba_resp)
+        h5f = h5py.File('data/processed2.h5', 'w')
+        h5f.create_dataset('input', data=oba_inputs)
+        h5f.create_dataset('output', data=oba_outputs)
         print('-> wrote arrays to hdf5')
