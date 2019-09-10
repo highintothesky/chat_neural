@@ -5,10 +5,10 @@ with open('data/lines_raw.txt') as f:
     content = f.readlines()
 content = [x.strip().split() for x in content]
 
-model = FastText(size=100, window=3, min_count=1)
+model = FastText(size=150, window=3, min_count=2)
 
 model.build_vocab(sentences=content)
-model.train(sentences=content, total_examples=len(content), epochs=20)
+model.train(sentences=content, total_examples=len(content), epochs=30)
 
 print(model.wv['cunt'])
 print(model.most_similar(positive=[model.wv['yeah']], topn=10))

@@ -11,7 +11,7 @@ from gensim.models import FastText
 
 if __name__ == '__main__':
     print('-> Loading att model')
-    att_model = keras.models.load_model('models/att4_full.h5',
+    att_model = keras.models.load_model('models/att1_full.h5',
                                         custom_objects=SeqSelfAttention.get_custom_objects())
     ft_model = FastText.load('models/fasttext2')
 

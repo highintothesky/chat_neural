@@ -89,8 +89,8 @@ if __name__ == '__main__':
 
     # store the accepted convos
     # at least x percent of the lines must have this length
-    min_sent_len = 3
-    len_perc_max = 0.3
+    min_sent_len = 6
+    len_perc_max = 0.2
     conv_accepted = []
     sent_accepted = []
     utterances = []
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     if ft:
         print('-> loading fasttext wordembed model')
         ft_model = FastText.load('models/fasttext2')
-        max_sen_len = 30
+        max_sen_len = 20
         # sent_mat = sentences_to_matrix(sent_accepted)
         oba_utt = sentences_to_matrix(utterances, ft_model, max_sen_len)
         oba_resp = sentences_to_matrix(responses, ft_model, max_sen_len)
