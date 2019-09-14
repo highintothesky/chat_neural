@@ -1,4 +1,4 @@
-from process_movie_lines2 import sentences_to_matrix
+from process_movie_lines3 import embed_single
 # from train_attention3 import infer_nmt
 # from tensorflow.python.keras.models import load_model
 # from tensorflow.python.keras.backend import set_session
@@ -24,7 +24,7 @@ class NeuralBot():
         self.max_sen_len = 20
         self.model = model
 
-        self.bpemb_en = BPEmb(lang="en", dim=50)
+        self.bpemb_en = BPEmb(lang="en", dim=100, vs=100000)
         self.session = tf.Session()
 
     def start(self):
@@ -59,16 +59,16 @@ class NeuralBot():
         # restrict its length
         cleaned_list = cleaned.split()
         print(cleaned_list)
-        cleaned = ' '.join([word_i for word_i in cleaned_list[-20:]])
+        # cleaned = ' '.join([word_i for word_i in cleaned_list[-30:]])
         sentences = [cleaned]
         print('-> getting neural response')
         try:
             # global graph
             # graph = tf.get_default_graph()
-            mat = sentences_to_matrix(sentences, self.ft_model)
+            mat = embed_single(cleaned, self.bpemb_en, seq_length=30)
             print('-> mat shape:')
             print(mat.shape)
-            test_in_seq = np.expand_dims(mat[0,:,:], 0)
+            test_in_seq = np.expand_dims(mat[:,:], 0)
             print('-> Test sentence:')
             print(sentences[0])
             out_sentence = ''
@@ -77,24 +77,46 @@ class NeuralBot():
             print(ex)
         try:
             with self.graph.as_default():
-                # word = ''
+                sentence_test = ''
                 # this_len = 0
+                test_in_seq = np.expand_dims(mat, 0)
+                seq_total = test_in_seq
+                sent_test = ''
+                print('-> Predicting...')
                 for j in range(30):
-                    this_len += 1
+
                     arr = self.model.predict(test_in_seq)
+                    word = bpemb_en.most_similar(positive=[arr[0,:]])[0][0] + ' '
+                    if word[0] == '▁':
+                        word = word[1:]
+                    sentence_test += word
                     arr = np.expand_dims(arr, 0)
 
                     test_in_seq = test_in_seq[:,1:,:]
                     test_in_seq = np.concatenate((test_in_seq, arr), axis=1)
-                sentence_sc = self.bpemb_en.most_similar(test_in_seq[0,:,:])
+
+                    seq_total = np.concatenate((seq_total, arr), axis=1)
+
+                out_arr = seq_total[0,30:,:]
+                sent_oba_sc = self.bpemb_en.most_similar(positive=out_arr)
+
+                sent_oba = ''
+                for word_sc in sent_oba_sc:
+                    word = word_sc[0]
+                    if word[0] == '▁':
+                        word = word[1:]
+                    sent_oba += word + ' '
+                print('-> Done predicting')
+                # sentence_sc = self.bpemb_en.most_similar(test_in_seq[0,:,:])
                 # first character is always _
-                sentence = ' '.join(word[0][1:] for word in sentence_sc)
+                # out_sentence = ' '.join(word[0][1:] for word in sentence_sc)
                 print('-> Output sentence:')
-                print(out_sentence)
+                print(sentence_test)
+                # print('-> inference Test:', sent_test)
             # out_sentence = re.sub(r"(.+?)\2+", r"\2", out_sentence)
         except Exception as ex:
             print(ex)
-        return out_sentence
+        return sentence_test
 
     def clean_string(self, line):
         line = line.translate({ord(i): None for i in """[]'\""""})

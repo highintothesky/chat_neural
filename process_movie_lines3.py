@@ -47,7 +47,8 @@ def encode_sentence_list(sentence_list, bpemb_en, seq_length):
         long_sentence += sentence + ' '
         enc_mat = bpemb_en.embed(long_sentence)
         this_seq_length = enc_mat.shape[0]
-        if this_seq_length > seq_length:
+        # we want long strings
+        if this_seq_length > seq_length*2:
             long_sentence = ''
             # now loop over the dims of enc_mat
             for i in range(this_seq_length-seq_length):
@@ -152,14 +153,15 @@ if __name__ == '__main__':
 
     if encode:
         print('-> loading BPE wordembed model')
-        bpemb_en = BPEmb(lang="en", dim=50)
+        bpemb_en = BPEmb(lang="en", dim=100, vs=100000)
         seq_length = 30
-        # max_sen_len = 20
-        oba_inputs, oba_outputs = encode_sentence_list(in_sentences, bpemb_en, seq_length)
+        print('-> processing lines to embed')
+        # let's only process the first ... idk
+        oba_inputs, oba_outputs = encode_sentence_list(in_sentences[300000:], bpemb_en, seq_length)
         print('-> Writing to file')
 
 
-        h5f = h5py.File('data/processed_bpe.h5', 'w')
+        h5f = h5py.File('data/processed_bpe_test.h5', 'w')
         h5f.create_dataset('input', data=oba_inputs)
         h5f.create_dataset('output', data=oba_outputs)
         print('-> wrote arrays to hdf5')

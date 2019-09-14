@@ -1,7 +1,10 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from bot import NeuralBot
 import keras
 from keras_self_attention import SeqSelfAttention
+from train_functional import root_mean_squared_error
 from keras_multi_head import MultiHead
 from keras.utils import CustomObjectScope
 import tensorflow as tf
@@ -12,8 +15,9 @@ if __name__ == '__main__':
     token = f.read().strip()
 
     with CustomObjectScope({'SeqSelfAttention': SeqSelfAttention,
-                            'MultiHead': MultiHead}):
-        model = keras.models.load_model('models/att11_full.h5')
+                            'MultiHead': MultiHead,
+                            'root_mean_squared_error': root_mean_squared_error}):
+        model = keras.models.load_model('models/func_6.h5')
     global graph
     graph = tf.get_default_graph()
 

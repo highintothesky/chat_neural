@@ -9,16 +9,18 @@ from sklearn.model_selection import train_test_split
 from keras.models import Model
 from keras.layers import Input, Dense, Dropout, GRU, GlobalMaxPool1D, GlobalMaxPool2D, BatchNormalization, Add, Flatten, TimeDistributed
 
+# def generate_from_h5()
+
 def main():
     # load data
-    h5f = h5py.File('data/processed_bpe.h5', 'r')
-    max_ind = int(len(h5f['input'])*0.5)
+    h5f = h5py.File('data/processed_bpe_1.h5', 'r')
+    max_ind = int(len(h5f['input'])*0.1)
     print('-> max index:', max_ind)
     oba_inputs = h5f['input'][:max_ind]
     oba_outputs = np.squeeze(h5f['output'][:max_ind])
     print('-> output shape:', oba_outputs.shape)
     # load_trained = True
-    load_trained = True
+    load_trained = False
     # print(oba_inputs[0,:,:])
     # print(oba_outputs[0,:,:])
 
@@ -32,12 +34,12 @@ def main():
     hidden_size = 150
     rnn_size = 100
     batch_size = 64
-    n_epochs = 3
+    n_epochs = 2
     sen_len = oba_inputs.shape[1]
     emb_len = oba_inputs.shape[2]
     # which iteration of models to load
-    current_it = 11
-    next_it = 11
+    current_it = 1
+    next_it = 1
     full_path = 'models/att{}_full.h5'.format(current_it)
     full_new_path = 'models/att{}_full.h5'.format(next_it)
 
@@ -68,7 +70,7 @@ def main():
         #                   dropout=0.25,
         #                   recurrent_dropout=0.1,
         #                   return_sequences=False)))
-        model.add(SeqSelfAttention(attention_activation='sigmoid'))
+        # model.add(SeqSelfAttention(attention_activation='sigmoid'))
 
         model.add(BatchNormalization())
         # model.add(Flatten())
@@ -107,7 +109,7 @@ def main():
         # we might want to recompile
         model.compile(
             optimizer='Adam',
-            loss='mse',
+            loss='mae',
             metrics=['mse', 'mae'],
         )
         # model.build((X_train, y_train))
