@@ -17,7 +17,7 @@ if __name__ == '__main__':
     with CustomObjectScope({'SeqSelfAttention': SeqSelfAttention,
                             'MultiHead': MultiHead,
                             'root_mean_squared_error': root_mean_squared_error}):
-        model = keras.models.load_model('models/func_6.h5')
+        model = keras.models.load_model('models/char_10_epoch_4.h5')
     global graph
     graph = tf.get_default_graph()
 
