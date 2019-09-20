@@ -13,21 +13,23 @@ from keras_multi_head import MultiHead
 from keras.utils import CustomObjectScope
 from sklearn.model_selection import train_test_split
 from keras.models import Model
-from keras.layers import Input, Dense, Dropout, GRU, GlobalMaxPool1D
+from keras.layers import Input, Dense, Dropout, GRU, GlobalMaxPool1D, Reshape
 from keras.layers import GlobalMaxPool2D, BatchNormalization, Add, Flatten
 from keras.layers import TimeDistributed, Multiply, Concatenate, Bidirectional
+from keras.layers.core import SpatialDropout1D
 from keras import backend as K
 from batch_generator import BatchGenerator
 from imblearn.keras import BalancedBatchGenerator
+from imblearn.over_sampling import SMOTE
 
 def root_mean_squared_error(y_true, y_pred):
     return K.sqrt(K.mean(K.square(y_pred - y_true)))
 
 def main():
     # load test data
-    filename = "data/memes.txt"
+    filename = "data/mixed.txt"
     raw_text = open(filename, 'r', encoding='utf-8').read()
-    raw_text = raw_text.lower()
+    raw_text = raw_text.lower()[:1500000]
     raw_text = re.sub('\n', " ", raw_text)
 
     # create mapping of unique chars to integers
@@ -44,32 +46,31 @@ def main():
     print("-> Total Characters: ", n_chars)
     print("-> Total Vocab: ", n_vocab)
     # prepare the dataset of input to output pairs encoded as integers
-    seq_length = 100
-    dataX = []
-    dataY = []
+    seq_length = 70
+    sentences = []
+    next_chars = []
     for i in range(0, n_chars - seq_length, 1):
-    	seq_in = raw_text[i:i + seq_length]
-    	seq_out = raw_text[i + seq_length]
-    	dataX.append([char_to_int[char] for char in seq_in])
-    	dataY.append(char_to_int[seq_out])
+        sentences.append(raw_text[i:i+seq_length])
+        next_chars.append(raw_text[i+seq_length])
 
-
-
-    n_patterns = len(dataX)
+    n_patterns = len(sentences)
     print("Total Patterns: ", n_patterns)
-    # reshape X to be [samples, time steps, features]
-    X = np.reshape(dataX, (n_patterns, seq_length, 1))
-    # normalize
-    X = X / float(n_vocab)
-    # one hot encode the output variable
-    y = np_utils.to_categorical(dataY)
+
+    X = np.zeros((n_patterns, seq_length, n_vocab), dtype=np.bool)
+    y = np.zeros((n_patterns, n_vocab), dtype=np.bool)
+
+    for i, sentence in enumerate(sentences):
+        for t, char in enumerate(sentence):
+            X[i, t, char_to_int[char]] = 1
+        y[i, char_to_int[next_chars[i]]] = 1
+
 
     print('- Input:',X[0,:,:].shape)
     print('- Output:',y[0].shape)
-    # X = np.squeeze(X)
+
     X_train, X_test, y_train, y_test = train_test_split(X,
                                                         y,
-                                                        test_size=0.1,
+                                                        test_size=0.2,
                                                         random_state=42)
 
     # load_trained = True
@@ -80,36 +81,35 @@ def main():
     hidden_att_size = 256
     # attention size
     att_size = 256
-    # old
-    rnn_size = 300
-    batch_size = 64
+
+    rnn_size = 256
+    batch_size = 256
+
     # if we want to change batch size during training
     # dynamic_batch = True
     dynamic_batch = False
-    # bg_train = BalancedBatchGenerator(X_train, y_train, batch_size=batch_size, random_state=42)
-    # bg_test = BalancedBatchGenerator(X_test, y_test, batch_size=batch_size, random_state=42)
+
 
     n_epochs = 40
     att_act = 'softmax'
     # dropout rate
-    do_rate = 0.35
+    do_rate = 0.4
+    r_do_rate = 0.01
     # regularization
     kernel_regularizer = keras.regularizers.l2(0.0001)
 
     # opt = keras.optimizers.Adam()
-    opt = keras.optimizers.Adadelta()
+    # opt = keras.optimizers.Adadelta()
+    opt = keras.optimizers.RMSprop(lr=0.001)
 
     sen_len = seq_length
     emb_len = n_vocab
 
     # which iteration of models to load
-    current_it = 11
-    next_it = 11
-    # full_path = 'models/char_{}.h5'.format(current_it)
-    full_path = 'models/char_9_epoch_6.h5'
+    next_it = 20
+
+    full_path = 'models/char_17_epoch_2.h5'
     full_new_path = 'models/char_{}.h5'.format(next_it)
-
-
 
     if load_trained:
         print('-> Loading att model')
@@ -119,45 +119,42 @@ def main():
             model = keras.models.load_model(full_path)
     else:
         # define inputs
-        inputs = Input(shape=(sen_len,1))
-        # x = Dropout(do_rate)(inputs)
-        # x = BatchNormalization()(inputs)
+        inputs = Input(shape=(sen_len, n_vocab))
 
-        x = GRU(units=rnn_size,
-                # activity_regularizer=kernel_regularizer,
-                # kernel_regularizer=kernel_regularizer,
-                return_sequences=True)(inputs)
+        x = Bidirectional(GRU(units=rnn_size,
+                              return_sequences=True))(inputs)
         x = BatchNormalization()(x)
         x = Dropout(do_rate)(x)
-        # x = GRU(units=hidden_att_size,
-        #         activity_regularizer=kernel_regularizer,
-        #         kernel_regularizer=kernel_regularizer,
-        #         return_sequences=True)(x)
-        # x = SeqSelfAttention(attention_activation=att_act,
-        #                      units=att_size)(x)
+        x = Bidirectional(GRU(units=rnn_size,
+                              return_sequences=False))(x)
+        x = BatchNormalization()(x)
+        x = Dropout(do_rate)(x)
+        # x = SeqSelfAttention(units=att_size,
+        #                      attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL)(x)
+        # x = Flatten()(x)
+        # x = MultiHead(SeqSelfAttention(units=att_size,
+        #                                attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL))(x)
+        # x = Reshape((sen_len, n_vocab))(x)
+        # x = Dropout(do_rate)(x)
+        # x = MultiHead(SeqSelfAttention(units=att_size,
+        #                                attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL))(x)
+        # x = GRU(units=rnn_size,
+        #         return_sequences=True)(inputs)
+        # x = GlobalMaxPool1D(x)
+        #
+        # x = GRU(units=rnn_size)(x)
+        # x = BatchNormalization()(x)
         # x = Dropout(do_rate)(x)
 
-        x = GRU(units=rnn_size)(x)
-        x = Dropout(do_rate)(x)
-
-        # tried really hard getting attention to work ¯\_(ツ)_/¯
-        # x = SeqSelfAttention(attention_activation=att_act,
-        #                      units=att_size)(x)
-
-        # x = Flatten()(x)
         predictions = Dense(emb_len,
-                            # activity_regularizer=kernel_regularizer,
-                            # kernel_regularizer=kernel_regularizer,
                             activation='softmax')(x)
 
         model = Model(inputs=inputs, outputs=predictions)
 
-
-
         model.compile(
             optimizer=opt,
             loss='categorical_crossentropy',
-            metrics=['accuracy', 'categorical_accuracy'],
+            metrics=['accuracy'],
         )
     print(model.summary())
 
@@ -182,8 +179,9 @@ def main():
         #                     validation_data=bg_test,
         #                     use_multiprocessing=True,
         #                     workers=4,
-        #                     epochs=1)
+        #                     epochs=40)
                             # validation_data=(oba_in_tests, oba_out_test))
+        print('-> Saving to', full_new_path)
         model.save(full_new_path)
 
 if __name__ == '__main__':
