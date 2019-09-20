@@ -54,10 +54,10 @@ class AttentionModel():
 
         # add a RNN layer
         if self.rnn_style == 'GRU' and self.bidirectional:
-            encoder_output, hidden_state = Bidirectional(GRU(units=self.rnn_size,
+            encoder_output, hidden_state, _ = Bidirectional(GRU(units=self.rnn_size,
                                                              return_sequences=True,
                                                              return_state=True,
-                                                             name = 'GRU bi'))(inputs)
+                                                             name = 'GRUbi'))(inputs)
         elif self.rnn_style == 'GRU' and not self.bidirectional:
             encoder_output, hidden_state = GRU(units=self.rnn_size,
                                                return_sequences=True,
@@ -68,6 +68,10 @@ class AttentionModel():
                                                               return_sequences=True,
                                                               return_state=True,
                                                               name = 'CuDNNLSTM')(inputs)
+        elif self.rnn_style is None:
+            # full attention model
+            encoder_output, attention_weights = Attention(context='many-to-many',
+                                                          name = 'Attention in')(inputs)
         # concat for use as input
         attention_input = [encoder_output, hidden_state]
 
@@ -121,3 +125,6 @@ class AttentionModel():
         print('-> Loading model weights...')
         self.model.load_weights(self.checkpoint_path)
         print('-> Done.')
+
+    def save_h5(self, h5_path):
+        self.model.save(h5_path)

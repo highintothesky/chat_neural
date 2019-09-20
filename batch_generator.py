@@ -1,9 +1,9 @@
-from keras.utils.data_utils import Sequence
+from tensorflow.python.keras.utils.data_utils import Sequence
 import numpy as np
 
 class BatchGenerator(Sequence):
 
-    def __init__(self, h5_list, batch_size = 64):
+    def __init__(self, h5_list, batch_size = 64, maxlen = False):
         self.h5_list = h5_list
         self.h5_idx = 0
         # self.batch_idx = 0
@@ -16,7 +16,11 @@ class BatchGenerator(Sequence):
         self.h5_sizes = h5_sizes
         self.total_size = sum(h5_sizes)
         self.switching = False
+
+        if maxlen:
+            self.total_size = maxlen
         self.length = int(float(self.total_size)/batch_size)
+        print('-> generator made with {} batches'.format(self.length))
 
     def __len__(self):
         return self.length

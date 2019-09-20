@@ -46,7 +46,7 @@ def main():
     char_to_int = dict((c, i) for i, c in enumerate(chars))
     int_to_char = dict((i, c) for i, c in enumerate(chars))
     print('-> int to char:', int_to_char)
-    print('-> char to int:', char_to_int)
+    # print('-> char to int:', char_to_int)
     # print(char_to_int)
     # char_to_int = {' ': 0, '!': 1, '%': 2, '&': 3, "'": 4, ',': 5, '-': 6, '.': 7, '/': 8, '0': 9, '1': 10, '2': 11, '3': 12, '4': 13, '5': 14, '6': 15, '7': 16, '8': 17, '9': 18, ':': 19, ';': 20, '<': 21, '>': 22, '?': 23, 'a': 24, 'b': 25, 'c': 26, 'd': 27, 'e': 28, 'f': 29, 'g': 30, 'h': 31, 'i': 32, 'j': 33, 'k': 34, 'l': 35, 'm': 36, 'n': 37, 'o': 38, 'p': 39, 'q': 40, 'r': 41, 's': 42, 't': 43, 'u': 44, 'v': 45, 'w': 46, 'x': 47, 'y': 48, 'z': 49, '~': 50, '—': 51}
     char_list = list(char_to_int.keys())
@@ -105,7 +105,7 @@ def main():
     #     #                                                   num_hops=16,
     #     #                                                   use_penalization=False)(x)
 
-    checkpoint_path = "models/char_att3/"
+    checkpoint_path = "models/char_att4/"
 
     # Create checkpoint callback
     cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path,
