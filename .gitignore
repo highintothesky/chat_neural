@@ -126,3 +126,4 @@ dmypy.json
 token.txt
 data/*
 models/*
+praw.ini

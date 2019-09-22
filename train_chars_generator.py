@@ -27,13 +27,13 @@ def perplexity(labels, logits):
     return pow(2, categorical_crossentropy(y_true=labels, y_pred=logits))
 
 def main():
-    h5_list = [h5py.File('data/processed0.h5', 'r'), h5py.File('data/processed1.h5', 'r'), h5py.File('data/processed2.h5', 'r')]
-    h5_list_test = [h5py.File('data/processed3.h5', 'r')]
+    h5_list = [h5py.File('data/processed0.h5', 'r'), h5py.File('data/processed1.h5', 'r'), h5py.File('data/processed3.h5', 'r'), h5py.File('data/processed4.h5', 'r')]
+    h5_list_test = [h5py.File('data/processed2.h5', 'r')]
 
     batch_size = 100
 
     bg_train = BatchGenerator(h5_list, batch_size)
-    bg_test = BatchGenerator(h5_list_test, batch_size, maxlen = 400000)
+    bg_test = BatchGenerator(h5_list_test, batch_size) #, maxlen = 400000)
 
     # if we want to change batch size during training
     # dynamic_batch = True
@@ -50,7 +50,7 @@ def main():
     #     #                                                   num_hops=16,
     #     #                                                   use_penalization=False)(x)
 
-    checkpoint_path = "models/char_att6/"
+    checkpoint_path = "models/char_att7/"
 
     # Create checkpoint callback
     cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path,
