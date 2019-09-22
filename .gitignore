@@ -124,6 +124,6 @@ dmypy.json
 .pyre/
 
 token.txt
-data/*
+# data/*
 models/*
 praw.ini
