@@ -39,7 +39,7 @@ def sample(preds, temperature=1.0):
 if __name__ == '__main__':
     print('-> Loading att model')
 
-    checkpoint_path = "models/char_att3/"
+    checkpoint_path = "models/char_att6/"
     model = AttentionModel(checkpoint_path = checkpoint_path,
                             load_model = True).model
 

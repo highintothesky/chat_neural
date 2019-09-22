@@ -53,6 +53,7 @@ class AttentionModel():
         inputs = Input(shape=(self.seq_len, self.emb_len), name = 'inputs')
 
         # add a RNN layer
+        # bidirectional not working yet
         if self.rnn_style == 'GRU' and self.bidirectional:
             encoder_output, hidden_state, _ = Bidirectional(GRU(units=self.rnn_size,
                                                              return_sequences=True,

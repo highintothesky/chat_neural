@@ -1,25 +1,31 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from bot import NeuralBot
-# import keras
-# from keras_self_attention import SeqSelfAttention
-# from train_functional import root_mean_squared_error
-# from keras_multi_head import MultiHead
-# from keras.utils import CustomObjectScope
+
+import sys
+# import getopt
 import tensorflow as tf
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, PicklePersistence
+from bot import NeuralBot
 from attention_model import AttentionModel
 
-
 if __name__ == '__main__':
+    debug = 0
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '--debug':
+            debug = 1
+
     print('-> Starting Bot!')
     f = open("token.txt", "r")
     token = f.read().strip()
 
-    checkpoint_path = "models/char_att3/"
-    global model
-    model = AttentionModel(checkpoint_path = checkpoint_path,
-                           load_model = True).model
+
+    if debug == 0:
+        checkpoint_path = "models/char_att6/"
+        global model
+        model = AttentionModel(checkpoint_path = checkpoint_path,
+                               load_model = True).model
+    elif debug == 1:
+        model = 'yolo'
     # with CustomObjectScope({'SeqSelfAttention': SeqSelfAttention,
     #                         'MultiHead': MultiHead,
     #                         'root_mean_squared_error': root_mean_squared_error}):
@@ -28,11 +34,13 @@ if __name__ == '__main__':
     # graph = tf.get_default_graph()
     graph = None
 
-    # pp = PicklePersistence(filename='data/conversationbot')
-    updater = Updater(token, use_context=True)
+    pp = PicklePersistence(filename='data/conversationbot')
+    updater = Updater(token, persistence=pp, use_context=True)
     bot = NeuralBot(updater, model, graph)
 
     updater.dispatcher.add_handler(CommandHandler('hello', bot.hello))
+    updater.dispatcher.add_handler(CommandHandler('set_diversity', bot.set_diversity))
+    updater.dispatcher.add_handler(CommandHandler('set_length', bot.set_pred_len))
     updater.dispatcher.add_handler(MessageHandler(Filters.text, bot.respond))
 
     bot.start()

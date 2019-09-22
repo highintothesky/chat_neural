@@ -27,22 +27,22 @@ def perplexity(labels, logits):
     return pow(2, categorical_crossentropy(y_true=labels, y_pred=logits))
 
 def main():
-    h5_list = [h5py.File('data/processed0.h5', 'r'), h5py.File('data/processed1.h5', 'r')]
-    h5_list_test = [h5py.File('data/processed2.h5', 'r')]
+    h5_list = [h5py.File('data/processed0.h5', 'r'), h5py.File('data/processed1.h5', 'r'), h5py.File('data/processed2.h5', 'r')]
+    h5_list_test = [h5py.File('data/processed3.h5', 'r')]
 
     batch_size = 100
 
     bg_train = BatchGenerator(h5_list, batch_size)
-    bg_test = BatchGenerator(h5_list_test, batch_size, maxlen = 200000)
+    bg_test = BatchGenerator(h5_list_test, batch_size, maxlen = 400000)
 
     # if we want to change batch size during training
     # dynamic_batch = True
     dynamic_batch = False
 
-    n_epochs = 40
-    # opt = keras.optimizers.Adam()
+    n_epochs = 20
+    opt = keras.optimizers.Adam()
     # opt = keras.optimizers.Adadelta()
-    opt = keras.optimizers.RMSprop(lr=0.001)
+    # opt = keras.optimizers.RMSprop(lr=0.001)
 
     # which iteration of models to load
     # next_it = 2
@@ -50,7 +50,7 @@ def main():
     #     #                                                   num_hops=16,
     #     #                                                   use_penalization=False)(x)
 
-    checkpoint_path = "models/char_att4/"
+    checkpoint_path = "models/char_att6/"
 
     # Create checkpoint callback
     cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path,
@@ -67,7 +67,7 @@ def main():
                         rnn_size = 512,
                         rnn_style = 'GRU',#'CuDNNLSTM',
                         # bidirectional = True,
-                        dropout_rate = 0.3,
+                        dropout_rate = 0.4,
                         load_model = load_model)
     # am.model.save(checkpoint_path + 'model.h5')
     # am.build_model()
