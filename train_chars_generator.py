@@ -39,7 +39,7 @@ def main():
     # dynamic_batch = True
     dynamic_batch = False
 
-    n_epochs = 20
+    n_epochs = 30
     opt = keras.optimizers.Adam()
     # opt = keras.optimizers.Adadelta()
     # opt = keras.optimizers.RMSprop(lr=0.001)

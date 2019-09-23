@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 
     if debug == 0:
-        checkpoint_path = "models/char_att6/"
+        checkpoint_path = "models/char_att7/"
         global model
         model = AttentionModel(checkpoint_path = checkpoint_path,
                                load_model = True).model

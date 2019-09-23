@@ -30,6 +30,9 @@ class NeuralBot():
         self.int_to_char = {0: ' ', 1: '!', 2: '"', 3: "'", 4: ',', 5: '-', 6: '.', 7: '/', 8: '0', 9: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: ':', 19: ';', 20: '<', 21: '>', 22: '?', 23: '@', 24: 'a', 25: 'b', 26: 'c', 27: 'd', 28: 'e', 29: 'f', 30: 'g', 31: 'h', 32: 'i', 33: 'j', 34: 'k', 35: 'l', 36: 'm', 37: 'n', 38: 'o', 39: 'p', 40: 'q', 41: 'r', 42: 's', 43: 't', 44: 'u', 45: 'v', 46: 'w', 47: 'x', 48: 'y', 49: 'z', 50: '~'}
         self.char_list = list(self.char_to_int.keys())
 
+        # log all communication to the bot
+        self.log_file = open('data/bot_conversations.txt', 'a')
+
     def start(self):
         self.updater.start_polling()
         self.updater.idle()
@@ -60,8 +63,8 @@ class NeuralBot():
         try:
             previous = context.user_data['old_input']
         except KeyError:
-            context.user_data['old_input'] = ''
-            previous = ''
+            context.user_data['old_input'] = ' '
+            previous = ' '
         return previous
 
     def set_diversity(self, update: Update, context: CallbackContext):
@@ -107,12 +110,20 @@ class NeuralBot():
         print('-> From:', name_lower)
         print('-> Message context:', context)
 
+        # log the message
+        self.log_file.write(update.message.text + '\n')
+        self.log_file.flush()
+
         diversity = self.get_div(update, context)
         out_len = self.get_pred_len(update, context)
 
-        in_sent = self.get_old_input(context) + ' ' + update.message.text
-        if not in_sent[-1] in self.stop_signs:
-            in_sent += '.'
+        old_input = self.get_old_input(context)
+
+        # add a period so the sentences don't just concatenate
+        if not old_input[-1] in self.stop_signs:
+            old_input += '.'
+
+        in_sent = old_input + ' ' + update.message.text
         self.set_old_input(context, in_sent)
 
         output_sentence = self.process_chars(in_sent, diversity, out_len)
